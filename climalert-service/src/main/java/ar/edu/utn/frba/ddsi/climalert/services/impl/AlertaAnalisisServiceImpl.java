@@ -5,9 +5,11 @@ import ar.edu.utn.frba.ddsi.climalert.models.repositories.RegistroClimaticoRepos
 import ar.edu.utn.frba.ddsi.climalert.services.AlertaAnalisisService;
 import ar.edu.utn.frba.ddsi.climalert.services.AlertaNotificationService;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class AlertaAnalisisServiceImpl implements AlertaAnalisisService {
 
@@ -31,8 +33,26 @@ public class AlertaAnalisisServiceImpl implements AlertaAnalisisService {
   public void analizarUltimoRegistro() {
     Optional<RegistroClimatico> ultimoRegistro = repository.obtenerUltimo();
 
-    ultimoRegistro
-        .filter(registro -> registro.esCondicionCritica(umbralTemperatura, umbralHumedad))
-        .ifPresent(notificationService::enviarAlerta);
+    if (ultimoRegistro.isEmpty()) {
+      log.info("Analisis de alerta: no hay registros disponibles todavia.");
+      return;
+    }
+
+    RegistroClimatico registro = ultimoRegistro.get();
+    boolean esCritico = registro.esCondicionCritica(umbralTemperatura, umbralHumedad);
+
+    log.info(
+        "Analisis de alerta - ubicacion: {}, temperatura: {}°C (umbral: {}°C), "
+            + "humedad: {}% (umbral: {}%), resultado: {}",
+        registro.getUbicacion(),
+        registro.getTemperatura(),
+        umbralTemperatura,
+        registro.getHumedad(),
+        umbralHumedad,
+        esCritico ? "ALERTA" : "sin alerta");
+
+    if (esCritico) {
+      notificationService.enviarAlerta(registro);
+    }
   }
 }

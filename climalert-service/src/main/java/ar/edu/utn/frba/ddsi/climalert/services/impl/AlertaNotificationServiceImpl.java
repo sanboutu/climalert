@@ -3,11 +3,13 @@ package ar.edu.utn.frba.ddsi.climalert.services.impl;
 import ar.edu.utn.frba.ddsi.climalert.models.entities.RegistroClimatico;
 import ar.edu.utn.frba.ddsi.climalert.services.AlertaNotificationService;
 import java.time.format.DateTimeFormatter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class AlertaNotificationServiceImpl implements AlertaNotificationService {
 
@@ -32,6 +34,9 @@ public class AlertaNotificationServiceImpl implements AlertaNotificationService 
     mensaje.setText(construirCuerpo(registro));
 
     mailSender.send(mensaje);
+
+    log.info("Mail de alerta enviado a {} - asunto: '{}'",
+        String.join(", ", destinatarios), mensaje.getSubject());
   }
 
   private String construirCuerpo(RegistroClimatico registro) {
