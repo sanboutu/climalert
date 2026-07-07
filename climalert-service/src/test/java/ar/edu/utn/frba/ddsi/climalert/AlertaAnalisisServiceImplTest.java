@@ -1,6 +1,7 @@
 package ar.edu.utn.frba.ddsi.climalert;
 
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,13 +32,15 @@ class AlertaAnalisisServiceImplTest {
   private AlertaAnalisisServiceImpl service;
 
   private RegistroClimatico crearRegistro(double temperatura, int humedad) {
-    return RegistroClimatico.builder()
+    RegistroClimatico registro = RegistroClimatico.builder()
         .fechaHora(LocalDateTime.now())
         .ubicacion("Buenos Aires")
         .temperatura(temperatura)
         .humedad(humedad)
         .condicion("Clear")
         .build();
+    registro.setId(1L);
+    return registro;
   }
 
   @Test
@@ -73,5 +76,39 @@ class AlertaAnalisisServiceImplTest {
     service.analizarUltimoRegistro();
 
     verify(notificationService, never()).enviarAlerta(org.mockito.ArgumentMatchers.any());
+  }
+
+  @Test
+  void noReanalizaNiReenviaAlertaSiElRegistroEsElMismoQueLaVezAnterior() {
+    service = new AlertaAnalisisServiceImpl(
+        repository, notificationService, UMBRAL_TEMPERATURA, UMBRAL_HUMEDAD);
+    RegistroClimatico registroCritico = crearRegistro(40.0, 70);
+    when(repository.obtenerUltimo()).thenReturn(Optional.of(registroCritico));
+
+    service.analizarUltimoRegistro();
+    service.analizarUltimoRegistro();
+    service.analizarUltimoRegistro();
+
+    verify(notificationService, times(1)).enviarAlerta(registroCritico);
+  }
+
+  @Test
+  void analizaYAlertaDeNuevoCuandoLlegaUnRegistroConIdDistinto() {
+    service = new AlertaAnalisisServiceImpl(
+        repository, notificationService, UMBRAL_TEMPERATURA, UMBRAL_HUMEDAD);
+    RegistroClimatico primero = crearRegistro(40.0, 70);
+    primero.setId(1L);
+    RegistroClimatico segundo = crearRegistro(41.0, 71);
+    segundo.setId(2L);
+
+    when(repository.obtenerUltimo())
+        .thenReturn(Optional.of(primero))
+        .thenReturn(Optional.of(segundo));
+
+    service.analizarUltimoRegistro();
+    service.analizarUltimoRegistro();
+
+    verify(notificationService).enviarAlerta(primero);
+    verify(notificationService).enviarAlerta(segundo);
   }
 }
