@@ -9,8 +9,15 @@ public record WeatherApiResponseDto(Location location, Current current) {
 
   public record Current(
       @JsonProperty("temp_c") double tempC,
+      @JsonProperty("feelslike_c") double feelslikeC,
       int humidity,
       Condition condition,
+      @JsonProperty("wind_kph") double windKph,
+      @JsonProperty("wind_dir") String windDir,
+      @JsonProperty("pressure_mb") double pressureMb,
+      double uv,
+      int cloud,
+      @JsonProperty("precip_mm") double precipMm,
       @JsonProperty("last_updated") String lastUpdated) {
   }
 

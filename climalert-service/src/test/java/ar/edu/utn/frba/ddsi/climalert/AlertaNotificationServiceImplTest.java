@@ -36,8 +36,15 @@ class AlertaNotificationServiceImplTest {
         .fechaHora(LocalDateTime.of(2026, 7, 3, 18, 30))
         .ubicacion("Ciudad Evita")
         .temperatura(36.5)
+        .sensacionTermica(38.0)
         .humedad(65)
         .condicion("Clear")
+        .velocidadViento(13.0)
+        .direccionViento("NW")
+        .presion(1014.0)
+        .indiceUv(0.2)
+        .nubosidad(0)
+        .precipitacion(0.0)
         .build();
 
     service.enviarAlerta(registro);
@@ -51,7 +58,11 @@ class AlertaNotificationServiceImplTest {
     assertThat(mensajeEnviado.getText())
         .contains("Ciudad Evita")
         .contains("36.5")
+        .contains("38.0")
         .contains("65")
-        .contains("Clear");
+        .contains("Clear")
+        .contains("13.0")
+        .contains("NW")
+        .contains("1014.0");
   }
 }

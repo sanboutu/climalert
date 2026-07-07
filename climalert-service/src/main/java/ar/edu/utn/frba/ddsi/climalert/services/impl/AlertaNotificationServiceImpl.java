@@ -44,7 +44,14 @@ public class AlertaNotificationServiceImpl implements AlertaNotificationService 
         + "Ubicación: " + registro.getUbicacion() + "\n"
         + "Fecha y hora: " + registro.getFechaHora().format(FORMATO_FECHA) + "\n"
         + "Temperatura: " + registro.getTemperatura() + "°C\n"
+        + "Sensación térmica: " + registro.getSensacionTermica() + "°C\n"
         + "Humedad: " + registro.getHumedad() + "%\n"
-        + "Condición: " + registro.getCondicion();
+        + "Condición: " + registro.getCondicion() + "\n"
+        + "Viento: " + registro.getVelocidadViento() + " km/h "
+          + registro.getDireccionViento() + "\n"
+        + "Presión: " + registro.getPresion() + " hPa\n"
+        + "Índice UV: " + registro.getIndiceUv() + "\n"
+        + "Nubosidad: " + registro.getNubosidad() + "%\n"
+        + "Precipitación: " + registro.getPrecipitacion() + " mm";
   }
 }
