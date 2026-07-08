@@ -14,6 +14,7 @@ Climalert es un servicio autónomo, sin interfaz gráfica, que se conecta perió
 - Maven 3.9+
 - Docker (opcional, solo para construir y ejecutar el contenedor)
 - API key de [WeatherAPI](https://www.weatherapi.com/)
+- Cuenta de [Mailtrap](https://mailtrap.io/) (o cualquier servidor SMTP) para el envío de correos
 
 ---
 
@@ -32,12 +33,14 @@ climalert/
 
 ## Funcionamiento
 
-1. **Integración con WeatherAPI**: cada 5 minutos, el sistema consulta el endpoint `/current.json` de WeatherAPI para una ubicación fija (CABA) y almacena los datos localmente para registro histórico.
-2. **Procesamiento de alertas**: cada 1 minuto, el sistema analiza la última información climática disponible y evalúa si se cumplen las condiciones de alerta.
-3. **Notificación por correo**: al generarse una alerta, se envía un correo con el detalle completo del clima a:
-    - admin@clima.com
-    - emergencias@clima.com
-    - meteorologia@clima.com
+1. **Integración con WeatherAPI**: cada 5 minutos, el sistema consulta el endpoint `/current.json` de WeatherAPI para una ubicación fija (Buenos Aires) y almacena los datos localmente para registro histórico.
+2. **Procesamiento de alertas**: cada 1 minuto, el sistema analiza el último registro climático disponible. Para evitar alertar múltiples veces sobre el mismo dato (ya que el polling corre cada 5 minutos pero el análisis cada 1), el sistema recuerda el identificador del último registro ya analizado y omite el reanálisis si no llegó información nueva.
+3. **Notificación por correo**: al generarse una alerta, se envía un correo con el detalle completo del clima (temperatura, sensación térmica, humedad, condición, viento, presión, índice UV, nubosidad y precipitación) a:
+   - admin@clima.com
+   - emergencias@clima.com
+   - meteorologia@clima.com
+
+El polling y el análisis están unificados en un único scheduler (`ClimalertScheduler`), que corre cada minuto vía cron y decide internamente si también le corresponde pollear en ese ciclo — esto garantiza que, en los minutos donde coinciden ambas tareas, el polling se ejecute siempre antes que el análisis.
 
 ---
 
@@ -55,10 +58,26 @@ climalert/
 
 ## Configuración
 
-Antes de ejecutar el servicio, configurar las siguientes variables (ver `application.properties` / `application-local.properties`):
+El servicio usa el profile `local` para cargar configuración sensible desde `climalert-service/src/main/resources/application-local.properties` (archivo no versionado, excluido en `.gitignore`). Crear ese archivo con el siguiente contenido antes de ejecutar el servicio:
 
-- API key de WeatherAPI
-- Credenciales del servidor de correo saliente (SMTP)
+```properties
+weatherapi.base-url=https://api.weatherapi.com/v1
+weatherapi.api-key=${WEATHER_API_KEY:sin-configurar}
+weatherapi.location=Buenos Aires
+
+climalert.alerta.temperatura-umbral=35
+climalert.alerta.humedad-umbral=60
+climalert.alerta.destinatarios=admin@clima.com,emergencias@clima.com,meteorologia@clima.com
+
+spring.mail.host=sandbox.smtp.mailtrap.io
+spring.mail.port=2525
+spring.mail.username=${MAILTRAP_USERNAME:sin-configurar}
+spring.mail.password=${MAILTRAP_PASSWORD:sin-configurar}
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+```
+
+Las credenciales reales se toman de variables de entorno del sistema (`WEATHER_API_KEY`, `MAILTRAP_USERNAME`, `MAILTRAP_PASSWORD`), configurables en el Run/Debug Configuration del IDE o directamente en el entorno de ejecución. Sin estas variables, el servicio arranca igual (con valores por defecto `sin-configurar`), pero la integración real con WeatherAPI y el envío de correos van a fallar.
 
 ---
 
@@ -80,6 +99,12 @@ mvn spring-boot:run -pl climalert-service
 
 El servicio queda disponible en el puerto **8080**.
 
+### Ejecutar los tests
+
+```bash
+mvn test
+```
+
 ### Validar el proyecto de forma exhaustiva
 
 ```bash
@@ -87,22 +112,6 @@ mvn clean verify
 ```
 
 Este comando ejecuta los tests, valida las convenciones de formato mediante Checkstyle, detecta code smells con SpotBugs y valida la cobertura del proyecto con Jacoco.
-
----
-
-## Construcción de la imagen Docker
-
-Este proyecto utiliza una arquitectura multi-módulo de Maven, por lo que **el contexto de construcción de Docker siempre debe ser la raíz del proyecto**.
-
-```bash
-docker build -t climalert-img -f climalert-service/Dockerfile .
-```
-
-### Ejecutar el contenedor
-
-```bash
-docker run -p 8080:8080 climalert-img
-```
 
 ---
 
@@ -118,4 +127,4 @@ mvn clean verify && git tag entrega-final && git push origin HEAD --tags
 
 ## Estado del proyecto
 
-Servicio Spring Boot funcional con estructura multi-módulo validada (`mvn clean verify` en verde). Pendiente: integración con WeatherAPI, lógica de scheduling y análisis de alertas, y envío de notificaciones por correo.
+Servicio Spring Boot funcional y validado de punta a punta: integración real con WeatherAPI, scheduling unificado (polling + análisis) con deduplicación de alertas, y envío de correos confirmado contra Mailtrap. Suite de tests unitarios cubriendo modelo, repositorio, servicios y scheduler, con `mvn clean verify` en verde (Checkstyle, SpotBugs y Jacoco).
